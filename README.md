@@ -57,7 +57,7 @@
     - [MATERIALIZED VIEW](#materialized-view)
     - [MANAGING VIEW](#managing-view)
   - [Lesson 8 : Window Function](#lesson-8--window-function)
-    - [OVER() with PARTITION BY](#over-with-partition-by)
+    - [Concept \& OVER() with PARTITION BY](#concept--over-with-partition-by)
     - [OVER() with ORDER BY](#over-with-order-by)
     - [RANK()](#rank)
     - [FIRST\_VALUE()](#first_value)
@@ -220,6 +220,7 @@ CREATE TABLE STAFF(
     STAFF_Saraly INT NOT NULL
 );
 ```
+
 ### DROP OBJECT
 
 ``` sql
@@ -242,31 +243,229 @@ CREATE TABLE Staff(
 )
 ```
 ### ALTER TABLE
-เราสามารถ alter constraint ได้
+ใช้แก้ไขหลังเราสร้าง table ไปแล้ว
+- Add, Delete, Rename column/Table
+- Add, Drop constraints
+- Alter datatype
+
+ex. เราสามารถ alter constraint ได้
 ``` sql
 ALTER TABLE <Table_Name>
 ADD CONSTRAINT <CONSTRAINT_NAME> CHECK(constraint);
 
 ALTER TABLE <Table_Name>
-DROP CONSTRAINT <CONSTRAINT_NAME>;\
+DROP CONSTRAINT <CONSTRAINT_NAME>;
 
 ALTER TABLE <Table_Name>
-RENAME CONSTRAINT <old_constraint> TO <new_constraint>
+RENAME CONSTRAINT <old_constraint> TO <new_constraint> ;
 ```
+สามารถเพิ่มเงื่อนไขให้มันได้ เพื่อกรองให้ผ่านเงื่อนไขก่อนจะทำ actionนั้นๆ
+``` sql
+ALTER TABLE <table_name>
+DROP COLUMN IF EXISTS <column_name> ;
+
+มันจะ drop column-> firstname ถ้ามันมีอยู่จริง
+```
+การแก้ไข column type
+``` sql
+ALTER TABLE <table_name>
+ALTER COLUMN <column_name> TYPE <New_type> ;
+```
+การแก้ไขเพื่อเพิ่มการตั้งค่า set/drop default
+``` sql
+ALTER TABLE <table_name>
+ALTER COLUMN <column_name> SET DEFAULT <VALUE> ;
+``` 
+
 ## Lesson 7 : View
 ### UPDATE
+ต้องการแก้ไขค่า
+```sql
+UPDATE <table_name>
+SET <Column_name> = <value>;
+```
+ส่วนใหญ่มันมักจะมาคู๋กับ Where clause เพื่อให้การ update เจาะจงไปใน transaction ที่เราต้องการให้ update จริงๆ<br>
+ex.
+```sql
+UPDATE songs
+SET genre = 'POP'
+WHERE song_id = 4;
+```
 ### DELETE
+ใช้ลบ row ในtable
+``` sql
+DELETE FROM <table_name>
+WHERE <condition>
+```
+ถ้าเราอยากรู้ว่าเรา deleted อะไรไป สามารถ print log ได้ โดบการใช้ return
+``` sql
+DELETE FROM <table_name>
+WHERE <condition>
+RETURNING *
+```
 ### CREATE VIEW
+ก่อนที่มันจะเกิด VIEW ขึ้นได้ เราเคยมีท่าที่เป็นการสร้าง Table ที่ทำหน้าที่สร้าง table ที่ ingest ข้อมูลจาก table อื่นๆมา
+``` sql
+CREATE TABLE <table_name>
+AS
+SELECT <column_name> 
+FROM <table2_name>
+WHERE <condition> ;
+```
+ซึ่งสิ่งนี้มันตามมาด้วยปัญหา:
+1. เราจะเก็บข้อมูลซ้ำซ้อน -> Data store redundance
+2. data ถ้าเกิดการเปลี่ยนแปลงไป table ปลายทางจะไม่ได้รับรู้ถึงการเปลี่ยนไปของมัน
+   
+View เลยเข้ามาแก้ปัญหา ณ จุดนี้<br>
+โดย View จะทำหน้าที่เหมือนกับ table ทุกประการ แต่การเก็บค่านั้น จะไม่ได้เก็บ physically ข้อมูล แต่เป็นการเก็บ logics ของ Statement นั้น จุดประสงค์ของการใช้ view คือการ query อะไรต่างๆที่ไม่ complex มาก มันจะทำได้รวดเร็วโคดๆ
+``` sql
+CREATE VIEW <view_name>
+AS
+<Statement>;
+
+ex.
+CREATE VIEW customer_anonymous
+AS
+SELECT customer_id, initials
+FROM customer
+WHERE first_name IS NULL ;
+```
+
 ### MATERIALIZED VIEW
+ปัญหาของ view คือ performance มันขึ้นกับ statement ด้านหลัง
+``` sql
+CREATE MATERIALIZED VIEW <mat_view_name>
+AS <statement>;
+```
+และเมื่อต้องการอัพเดท VIEW ให้ใช้ command ซึ่งจะช่วยให้ไม่ต้อง update data manually ทั้งยังสามารถตั้ง trigger ได้ด้วย
+``` sql
+REFRESH MATERIALIZED VIEW <view_name>;
+```
 ### MANAGING VIEW
+เราสามารถ 
+- ALTER View/MaterializeView
+- DROP View/MaterializeView
+- CREATE OR REPLACE View แต่ทำกับ MaterializeView ไม่ได้
+
 ## Lesson 8 : Window Function
-### OVER() with PARTITION BY
+### Concept & OVER() with PARTITION BY
+หลักการทำงานของ window function ทั่วไปจะเป็นการ apply function อะไรซักอย่าง โดยไม่ต้องการควบรวม(group) rows แบบพวก aggregated function
+ซึ่งแปลว่าที่ id เดียวกัน มันจะได้ค่าจากการผ่าน window function เหมือนกัน
+``` sql
+AGG(agg_column) OVER(PARTITION BY partition_column);
+                     |-----------Window-----------|
+```
+EX :
+<img src="utils\Screenshot 2025-12-24 105632.png">
+จะสังเกตได้ว่า มันมี no_of_transactions_by_type ที่เกิดจาก window function และได้ค่าเหมือนกันใน customer_id เดียวกัน เนื่องจากใช้ cusyomer_id เป็น partition
+``` sql
+SELECT *,
+SUM (price_in_transaction) OVER(PARTITION BY customer_id)
+FROM payment ;
+```
+>[!NOTE] 
+>เราสามารถใส่ PARTITION COLUMN ได้มากกว่า 1 Aggregate function ก็สามารถเปลี่ยนไปได้ด้วย
+
 ### OVER() with ORDER BY
+สมมุติถ้าเราต้องการ cumulative sum (รวมผลแบบสะสม) เช่น<br>
+จะเห็นว่า ที่ column sum จะเป็นค่าของ cumulative sum ของทุก row ลงไปเรื่อยๆ
+<img src='utils\Screenshot 2025-12-24 111441.png'>
+``` sql
+SELECT *,
+sum (amount) OVER(ORDER BY payment_date)
+from payment;
+```
+>[!Note]
+>เราสามารถใช้ window function แบบ partition ต่อด้วย order ได้ 
+
+```sql
+SELECT *
+SUM(amount)
+  OVER(PARTITION BY custom_id
+       ORDER BY payment_date, payment_id
+      )
+FROM payment ;
+```
 ### RANK()
+สามารถจัดอันดับจาก ค่าใน column ต่างๆได้ ex. จัดอันดับหนังที่ยาวนานที่สุด
+``` sql
+SELECT *
+RANK() OVER(ORDER BY length desc)
+FROM film ;
+```
+ถ้าต้องการให้เรียงอันดับของค่า rankด้วยเลย จะใช้ DENSE_RANK()
+``` sql
+SELECT *
+DENSE_RANK() OVER(ORDER BY length desc)
+FROM film ;
+```
+>[!Note]
+> Window function ไม่สามารถ อยู่ภายใต้ where clause ได้<br>
+> ต้องไปใช้ท่า subquery แทน<br>
+> ex. 
+``` sql
+SELECT *
+WHERE(RANK() OVER(ORDER BY length desc)) =1
+FROM film ;
+                    |
+                 Subquery
+                    |
+                    V
+SELECT * FROM(
+              SELECT *
+              DENSE_RANK() OVER(ORDER BY length desc) as ranking
+              FROM film 
+              ) 
+WHERE ranking = 1
+```
 ### FIRST_VALUE()
-### LEAD & LAG 
+มันจะเลือกค่าแรกของทุกๆการกวาด window function เช่น PARTITION
+``` sql
+SELECT *
+FIRST_VALUE(count(*)) OVER(PARTITION BY country ORDER BY count(*))
+FROM customer_list ;
+```
+### LEAD & LAG
+LEAD() มันจะเลือกเอาค่าที่ตัวถัดไปมาแปะไว้ มันจะให้ค่าเป็น null เมื่อสุด partition ไม่มีตัวถัดไปให้เอาค่ามาแปะไว้
+
+``` sql
+SELECT *
+LEAD(name) OVER(PARTITION BY country ORDER BY count(*))
+FROM customer_list ;
+```
+ex. สังเกตว่ามันจะเอาค่าตัวถัดไปมาแปะไว้ ถ้าหมดในgroupของมัน ตัวถัดไป = Null
+<img src='utils\Screenshot 2025-12-24 134100.png'>
+
+LAG() มันจะกลับกัน คือจะเอาค่าก่อนหน้ามาแปะไว้แทน
+``` sql
+SELECT *
+LAG(COUNT(*)) OVER(PARTITION BY country ORDER BY count(*))
+FROM customer_list ;
+```
+<img src='utils\Screenshot 2025-12-24 134343.png'>
+
 ## Lesson 9 : Grouping 
 ### GROUPING SETS
+ทำการ grouping ตาม set ที่ต้องการ ex.
+``` sql
+SELECT month, staff_id, SUM(amount)
+FROM payment
+GROUP BY 
+    GROUPING SETS(
+            (staff_id),
+            (month),
+            (staff_id , month)
+    );
+```
+<img src='utils\Screenshot 2025-12-24 141029.png'>
+
+จะสังเกตได้ว่า :<br>
+ในบรรทัดแรก,สอง มันเป็นการแบ่งตาม เดือนและstaff_id <br>
+ในบรรทัดที่สาม เป็นค่าการแบ่งของ เดือนเท่านั้น รวมstaff_idเข้าด้วยกัน <br>
+จะมีบางบรรทัดที่เดือนจะถูกควบรวม เหลือgroupแค่staff_id <br>
+ex.แบบบรรทัด 6,7<br>
+<img src='utils\Screenshot 2025-12-24 141702.png'>
+
 ### ROLLUP
 ### CUBE
 ### SELF-JOIN
