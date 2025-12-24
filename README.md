@@ -466,11 +466,136 @@ GROUP BY
 ex.แบบบรรทัด 6,7<br>
 <img src='utils\Screenshot 2025-12-24 141702.png'>
 
+มันดีกว่าการไปนั่ง group union group union group ที่performance มันจะกากมากๆ
+
 ### ROLLUP
+Concept RollUp กับ Cube เป็น subclause ของ group by clause <br>
+RollUp จะเสมือนเป็นการสร้างความเป็น hierarchy ในตัว
+``` sql
+GROUP BY
+ROLLUP (column1, column2, column3, ...)
+
+มันเทียบได้กับ
+
+GROUP BY
+GROUPING SETS(
+  (column1, column2, column3),
+  (column1, column2),
+  (column1),
+  ()
+)
+ex. (year, quater, month)
+```
+>[!Note]
+> ใน RollUp function order ในการเขียนนั้นสำคัญมาก<br>
+> Core : ใช้สำหรับ Natural hierarchy ดีสุด
+
+ex.
+```sql
+SELECT 
+  quater,
+  month,
+  date,
+  SUM(amount)
+FROM payment
+GROUP BY
+  ROLLUP(
+    quater,
+    month,
+    date
+  )
+ORDER BY 1,2,3 ;
+```
+โดยการเรียงลำดับจะเป็นแบบนี้ มันจะเรียงไปเรื่อยๆจนครบทุกวันในเดือนนั้น
+<img src='utils\Screenshot 2025-12-24 145101.png'>
+
+จะปิดด้วย aggregrate ระดับเดือน (rows ที่ 29)
+และจบที่ row 30 ที่เป็นการรวมของทั้ง quater นั้น
+<img src='utils\Screenshot 2025-12-24 145124.png'>
+
+ถ้าเป็นแบบในบรรทัดที่ 49 คือ รวมยอดทุกquater
+<img src='utils\Screenshot 2025-12-24 145136.png'>
+
 ### CUBE
+คล้ายกับ rollup มากๆ แต่เป็นการทำ grouping set กับทุก combination ที่มี ไม่ใช่แค่ใน hierarchical ดังนั้นก็ไม่ต้องสนเรื่อง Natural hierachy อีกแล้ว
+```sql
+GROUP BY
+CUBE (column1,column2,column3)
+
+มันเทียบเท่ากับการทำ
+GROUP BY
+  GROUPING SETS(
+    (column1,column2,column3),
+    (column1,column2),
+    (column1,column3),
+    (column2,column3).
+    (column1),
+    (column2),
+    (column3),
+    ()
+)
+```
 ### SELF-JOIN
+ใช้แปลงค่าที่ต้องได้จาก table ตัวเอง เช่น
+| Student_ID | Student_name | Auditor_id | Commentator_id |
+|-----|-----|-----|-----|
+|001 | Kim | 003 | 002|
+|002 | DD | 004 | 001|
+|003 | Katung | 001 | 002 |
+|004 | Mean | 002 | 003|
+
+แล้วใช้ self join เพื่อเปลี่ยนค่า id -> name
+
+| Student_ID | Student_name | Auditor_id | Commentator_id |
+|-----|-----|-----|-----|
+|001 | Kim | Katung | DD|
+|002 | DD | Mean | Kim|
+|003 | Katung | Kim | DD |
+|004 | Mean | DD | Katung|
+
 ### CROSS-JOIN
+สร้าง cartesina product 
+ex. 
+|Letter|
+|-----|
+|A|
+|B|
+
+กับ table
+|Number|
+|-----|
+|1|
+|2|
+|3|
+
+พอ cross join กันจะได้
+|Letter|Number|
+|---|---|
+|A|1|
+|A|2|
+|A|3|
+|B|1|
+|B|2|
+|B|3|
+
+``` sql
+SELECT
+t1.column1
+t2.column2
+FROM table1 t1
+CROSS JOIN table2 t2
+ไม่ต้อง specific columnในการสร้าง relationship
+```
+
 ### NATURAL-JOIN
+เหมือนกับการ join ทั่วๆไป ต่างกันแค่มัน auto implied column ที่จะเอามาเกิด relationship กันเป็น columnที่ชื่อเหมือนกันเท่านั้น ข้อจำกัดคือ ห้ามมี columnที่ชื่อซ้ำกันมากกว่า 1 ในทั้ง 2 ตาราง
+
+``` sql
+SELECT *
+FROM payment 
+NATURAL LEFT JOIN customer
+```
+
 ## Lesson 10 : STORE PROCEDURE & UDF
 ### USER DEFINE FUNCTION
 ### TRANSACTION
