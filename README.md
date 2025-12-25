@@ -658,7 +658,50 @@ NATURAL LEFT JOIN customer
 
 Technique for optimize SQL-server :
 
-1. Sargability
+1. SARGability
+   SARG abilityมันคือตวามสามารถในการ Search Argument ของ server engine ให้เกิดความ precisly มากที่สุด มันคือการทำยังไงให้วิ่งไปที่ index และ search หาของจาก index ได้ไวที่สุด แม่นยำที่สุด
+   >[!Note]
+   > ต่อให้ optimizer เลือก index ในการ queryก็ตาม มันก็ยังมีขั้นตอนว่ามันจะ seeking หรือ scaning <br>
+   >ซึ่งเห็นว่า ที่ถูกควรจะเป็น seeking แล้วมันจะเกิดปัญหาตรง optimizer เลือกจะไป scaning แทน <br>
+   > เพราะ scaning มันจะวิ่งไปที่ leaf ของ Btree แล้วscan ทุกตัวใน leaf-level -> Expensive เนื่องจาก HugeIndex
+
+   หัวใจ: คือการที่เราใช้ Index เหมือนจะเท่นะ แต่ indexที่มึงใช้เสือกไม่ได้ถูกqueryด้วยวิธี seeking ,แต่ดันใช้ท่า scaning ซึ่งมันเกิดจากปัญหาที่เราใช้ท่าแบบนี้
+   ```sql
+   SELECT *
+   FROM abc_table
+   WHERE to_date(date_time) = '25/12/2025'
+   ท่านี้มันจะวิ่งแสกนหาที่เท่ากับ 'aaaa'
+
+   ที่ควรทำต้องเป็นแบบนี้ (แค่สมมุตินะ)
+   SELECT * ,to_date(date_time) as dt
+   FROM abc_table
+   WHERE dt > '24/12/2025' and dt < '26/12/2025' 
+   แต่ท่านี้มันจะ seekingตัวระหว่างจริงๆ
+   ```
+   โดยการจะรู้ว่ามันทำงานแบบที่เราต้องการจริงไหมดูจากการ explainมันผ่าน
+   ``` sql
+    EXPLAIN ANALYZE
+    SELECT * FROM your_table WHERE …;
+    ข้อเสียคือมัน run query จริงๆนะ
+    แค่ถ้าอยากให้มันย้อนกลับมาจุดที่ยังไม่ได้รันได้ต้องใช้
+
+    BEGIN;
+    EXPLAIN ANALYZE UPDATE table SET … WHERE …;
+    ROLLBACK;
+   ```
+   ตัวอย่าง queryที่ตรงกับการเป็น SARGablity
+   ```sql
+  WHERE col = 'abc'        -- equality match
+  WHERE col > 100          -- range
+  WHERE col BETWEEN 50 AND 100
+  WHERE col LIKE 'abc%'    -- wildcard ที่จุดท้าย
+   ```
+   Non-SARGable
+   ```sql
+  WHERE LOWER(col) = 'abc'       -- function บน column
+  WHERE col LIKE '%abc%'         -- wildcard ที่จุดเริ่มต้น
+  WHERE SUBSTR(col,2,3) = 'xyz'  -- extract substring
+   ```
 2. Implicit Conversion
 3. Exmplicit Conversion
 4. Query Hash
@@ -666,6 +709,6 @@ Technique for optimize SQL-server :
 6. Dynamic SQL Execution
 7. Bookmark Lookups
 8. Key Lookup
-9. Missing Index Hints
+9.  Missing Index Hints
 10. Parameter Sniffing
 11. Store Procedures Encourage Plan Reuse
