@@ -652,7 +652,9 @@ NATURAL LEFT JOIN customer
 <b>Execute :</b>
 
 ### Guide Line From Video
-<iframe width="560" height="315" src="https://www.youtube.com/watch?v=FoTMJFZ4wwg" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+[![Watch the video](utils/Screenshot%202025-12-25%20145936.png)](https://www.youtube.com/watch?v=FoTMJFZ4wwg)
+
 
 Technique for optimize SQL-server :
 
