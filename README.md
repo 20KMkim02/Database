@@ -85,6 +85,7 @@
     - [COMMON TABLE EXPRESSION](#common-table-expression)
   - [Lesson 13 : Optimize Database](#lesson-13--optimize-database)
     - [Basic Knowledge](#basic-knowledge)
+    - [Guide Line From Video](#guide-line-from-video)
 
 ## DESCRIPTION DATASET
 ### 
@@ -613,23 +614,56 @@ NATURAL LEFT JOIN customer
 ### COMMON TABLE EXPRESSION
 ## Lesson 13 : Optimize Database
 ### Basic Knowledge
+
 ก่อนที่จะ optimize DB ได้ต้องรู้ก่อนว่าเราจะช่วยเพิ่มประสิทธิภาพส่วนไหนได้บ้าง 
 1. Storage Engine : ทำการ read data ระหว่าง disk กับ memory(RAM) สิ่งที่ต้องจัดการคือ
    1. concurrency
    2. data integrity
 2. Query Processor : รับ query จาก sql-server แล้วมันจะไปจัด plan เพื่อ optimal execution 
    
-Query Process :<br>
-Parsing and Binding : เมื่อรับ query มาแล้วจะทำกระบวนการนี้ ซึ่งจะ 
+<b>Query Process :</b> 4 steps
+
+<b>Parsing</b>
 1. make sure ว่า syntax ถูก แล้ว 
 2. translate SQL -> Tree of logical operator
-3. make sure ว่า object ต่างๆถูกสร้างไว้จริง 
-4. associate ทุก table, column ลง parse tree -> Algebraric tree
-5. ส่งไปยัง query optimizer
-6. สร้าง execution plan และเลือกอันที่ดีที่สุด เทียบโดย cost : ลงรายละเอียกตรงนี้ 
-   1. มันจะมีการทำ "execution plan reuse": เนื่องจากการสร้าง execution plan แต่ละรอบ มันแพง server ก็เลยำยายามจะใช้ plan ที่เคยสร้างไว้อยู่แล้ว @Plan Cache
-   2. ก่อนจะส่ง planเข้า storage engine ตัว optimizer มันจะมาเทียบ estimated plan กับ actual plan ที่เคยเก็บไว้ใน plan cache ถ้ามันพบที่ match มันก็จะใช้ตัวนั้น
-   3. การใช้ reuse จะ avoid : overhead ของการ create actual execution plan
-   4. Noted : execution plan จะไม่ได้เก็บไว้ตลอดเวลานะ มันจะถูกลบออกไปเมื่อครบ ageมัน ด้วยระบบ "Lazy writer process"
+
+<b>Binding</b>
+1. make sure ว่า object ต่างๆถูกสร้างไว้จริง 
+2. associate ทุก table, column ลง parse tree -> Algebraric tree
+3. ส่งไปยัง query optimizer
    
-7. mapping querry expression เป็น tree expression ที่จะถูก execute ผ่าน engine
+<b>Optimizie :</b>
+
+1. สร้าง execution plan และเลือกอันที่ดีที่สุด เทียบโดย cost : ลงรายละเอียกตรงนี้ 
+   1. มันจะสร้าง execution plan มาทุกความเป็นไปได้ เรียกว่า "Search Space"
+   2. มันจะมีการทำ "execution plan reuse": เนื่องจากการสร้าง execution plan แต่ละรอบ มันแพง server ก็เลยำยายามจะใช้ plan ที่เคยสร้างไว้อยู่แล้ว @Plan Cache
+   3. ก่อนจะส่ง planเข้า storage engine ตัว optimizer มันจะมาเทียบ estimated plan กับ actual plan ที่เคยเก็บไว้ใน plan cache ถ้ามันพบที่ match มันก็จะใช้ตัวนั้น ซึ่งมันขึ้นอยู่กับ Physical Operators cost และ Cardinality Estimation (Estimation of Numbers of Records)
+   4. การใช้ reuse จะ avoid : overhead ของการ create actual execution plan
+  >[!Note] 
+  >: execution plan จะไม่ได้เก็บไว้ตลอดเวลานะ มันจะถูกลบออกไปเมื่อครบ age มัน ด้วยระบบ "Lazy writer process" <br>
+  >: Operator จะเป็นตัวรับ physical execution planไปใช้งาน
+  >: Statistics ของ table มันคือ distribution ของค่าต่างๆ/columns ใน table
+   
+1. mapping querry expression เป็น tree expression ที่จะถูก execute ผ่าน engine
+
+>[!Note]
+> Recompiled : มันเป็นปัญหาที่เกิดถ้าเรา ปรับโครงสร้าง Table เช่นพวก indexing 
+
+<b>Execute :</b>
+
+### Guide Line From Video
+<iframe width="560" height="315" src="https://www.youtube.com/watch?v=FoTMJFZ4wwg" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+Technique for optimize SQL-server :
+
+1. Sargability
+2. Implicit Conversion
+3. Exmplicit Conversion
+4. Query Hash
+5. Explicit Parameterization
+6. Dynamic SQL Execution
+7. Bookmark Lookups
+8. Key Lookup
+9. Missing Index Hints
+10. Parameter Sniffing
+11. Store Procedures Encourage Plan Reuse
